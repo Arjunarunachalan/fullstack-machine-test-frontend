@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Grid2X2, List, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import type { Product } from "@/lib/api";
@@ -14,7 +14,12 @@ import { deleteProduct, getProducts } from "./product-api";
 const columnHelper = createColumnHelper<Product>();
 
 export function ProductList() {
+  const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<"grid" | "table">("grid");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const queryClient = useQueryClient();
   const products = useQuery({ queryKey: ["products"], queryFn: getProducts });
   const cartMutation = useMutation({ mutationFn: addCartItem });
@@ -54,6 +59,10 @@ export function ProductList() {
     ],
     getCoreRowModel: getCoreRowModel()
   });
+
+  if (!mounted) {
+    return null;
+  }
 
   if (products.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading products...</p>;
