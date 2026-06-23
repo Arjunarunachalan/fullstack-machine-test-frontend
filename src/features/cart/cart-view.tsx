@@ -8,7 +8,12 @@ import { getCart, removeCartItem, updateCartItem } from "./cart-api";
 
 export function CartView() {
   const queryClient = useQueryClient();
-  const cart = useQuery({ queryKey: ["cart"], queryFn: getCart });
+  const cart = useQuery({ 
+    queryKey: ["cart"], 
+    queryFn: getCart,
+    refetchOnMount: "always",
+    staleTime: 0
+  });
   const updateMutation = useMutation({
     mutationFn: updateCartItem,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] })
@@ -18,7 +23,7 @@ export function CartView() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] })
   });
 
-  const items = cart.data?.items ?? [];
+  const items = (cart.data?.items ?? []).filter((item) => item.productId != null);
   const total = items.reduce((sum, item) => sum + item.productId.price * item.quantity, 0);
 
   if (cart.isLoading) {

@@ -1,15 +1,42 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { ShoppingCart } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ShoppingCart, Check } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { addCartItem } from "@/features/cart/cart-api";
 import { getProduct } from "./product-api";
 
 export function ProductDetail({ id }: { id: string }) {
+  const router = useRouter();
+  const [isSuccess, setIsSuccess] = useState(false);
+  const queryClient = useQueryClient();
   const product = useQuery({ queryKey: ["products", id], queryFn: () => getProduct(id) });
-  const cartMutation = useMutation({ mutationFn: addCartItem });
+  
+  const cartMutation = useMutation({
+    mutationFn: addCartItem,
+    onSuccess: async () => {
+      toast.success("Added to cart");
+      setIsSuccess(true);
+      await queryClient.invalidateQueries({ queryKey: ["cart"] });
+      
+      setTimeout(() => {
+        setIsSuccess(false);
+        router.push("/cart");
+      }, 1000);
+    },
+    onError: (error: any) => {
+      if (error?.response?.status === 401) {
+        toast.error("Please login to add items to cart");
+        router.push("/login");
+      } else {
+        toast.error("Failed to add to cart");
+      }
+    }
+  });
 
   if (product.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading product...</p>;
@@ -40,9 +67,13 @@ export function ProductDetail({ id }: { id: string }) {
           </div>
         )}
         <div className="flex gap-2">
-          <Button onClick={() => cartMutation.mutate({ productId: product.data._id, quantity: 1 })}>
-            <ShoppingCart className="h-4 w-4" />
-            Add to Cart
+          <Button 
+            disabled={cartMutation.isPending || isSuccess}
+            onClick={() => cartMutation.mutate({ productId: product.data._id, quantity: 1 })}
+            className={isSuccess ? "bg-green-600 hover:bg-green-700" : ""}
+          >
+            {isSuccess ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
+            {cartMutation.isPending ? "Adding..." : isSuccess ? "Added!" : "Add to Cart"}
           </Button>
           <Button asChild variant="outline">
             <Link href={`/products/${product.data._id}/edit`}>Edit</Link>
